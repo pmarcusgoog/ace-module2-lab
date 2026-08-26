@@ -16,7 +16,13 @@ import * as utils from '../lib/utils'
 export function b2bOrder () {
   return ({ body }: Request, res: Response, next: NextFunction) => {
     if (utils.isChallengeEnabled(challenges.rceChallenge) || utils.isChallengeEnabled(challenges.rceOccupyChallenge)) {
-      const orderLinesData = body.orderLinesData || ''
+      const orderLinesData = typeof body.orderLinesData === 'string' ? body.orderLinesData : ''
+      if (/[\.\[\]`"'\\]/.test(orderLinesData) || 
+          /(constructor|prototype|__proto__|process|require|global|Function|Object|String|Array|Reflect|Proxy|Symbol|Buffer|import|eval|exec|spawn|window|document)/i.test(orderLinesData)) {
+        res.status(400)
+        next(new Error('Blocked potentially malicious code injection'))
+        return
+      }
       try {
         const sandbox = { safeEval, orderLinesData }
         vm.createContext(sandbox)
